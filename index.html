@@ -4,96 +4,98 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>抖音热榜数据插件</title>
-  <!-- Font Awesome Icons -->
+  <title>微信读书同步插件</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- 背景装饰 -->
-  <div class="bg-decoration">
-    <div class="bg-circle bg-circle-1"></div>
-    <div class="bg-circle bg-circle-2"></div>
-    <div class="bg-circle bg-circle-3"></div>
-  </div>
-  
   <main class="main">
-    <!-- 头部区域 -->
-    <div class="header-section">
-      <div class="logo-container">
-        <i class="fab fa-tiktok logo-icon"></i>
-        <h1 class="app-title">抖音热榜</h1>
-        <p class="app-subtitle">实时获取最新热门内容</p>
+    <section class="brand-bar">
+      <div class="brand-item">
+        <span class="brand-icon"><i class="fas fa-book-open"></i></span>
+        <span class="brand-name">微信读书</span>
       </div>
-      
+      <span class="brand-arrow"><i class="fas fa-arrow-right"></i></span>
+      <div class="brand-item">
+        <span class="brand-icon brand-icon-blue"><i class="fas fa-cubes"></i></span>
+        <span class="brand-name">飞书多维表格</span>
+      </div>
+    </section>
 
-    </div>
-    
-    <!-- 主功能卡片 -->
-    <div class="feature-card">
+    <section class="feature-card">
       <div class="card-header">
-        <div class="card-icon">
-          <i class="fas fa-fire"></i>
-        </div>
         <div class="card-title-section">
-          <h2 class="card-title">热榜数据获取</h2>
-          <p class="card-description">一键获取抖音实时热榜，自动创建多维表格</p>
+          <div class="eyebrow"><i class="fas fa-rotate"></i><span>BITABLE 插件</span></div>
+          <h1 class="card-title">同步进度</h1>
+          <p class="card-description">将你的微信读书划线与笔记同步到多维表格。</p>
         </div>
       </div>
-      
+
       <div class="card-content">
-        <!-- 功能特性展示 -->
-        <div class="features-grid">
-          <div class="feature-item">
-            <i class="fas fa-bolt"></i>
-            <span>实时数据</span>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-table"></i>
-            <span>自动建表</span>
+        <div class="form-item">
+          <label for="wereadCookie">微信读书 Cookie</label>
+          <div class="field-shell">
+            <i class="fas fa-key"></i>
+            <textarea id="wereadCookie" class="config-input" rows="3" placeholder="请粘贴 Cookie"></textarea>
           </div>
         </div>
-        
-        <!-- 主操作按钮 -->
-        <button id="getDouyinHotList" class="main-action-btn">
+
+        <div class="split-fields">
+          <div class="form-item">
+            <label for="maxRecords">同步数量</label>
+            <div class="field-shell">
+              <i class="fas fa-list-ol"></i>
+              <input id="maxRecords" class="config-input" type="number" min="1" max="2000" placeholder="100" />
+            </div>
+          </div>
+          <div class="form-item">
+            <label for="tableName">目标数据表</label>
+            <div class="field-shell">
+              <i class="fas fa-table"></i>
+              <input id="tableName" class="config-input" placeholder="微信读书笔记" />
+            </div>
+          </div>
+        </div>
+
+        <button id="startSync" class="main-action-btn">
           <div class="btn-content">
-            <i class="fas fa-download btn-icon"></i>
-            <span id="douyinText" class="btn-text">获取抖音热榜</span>
-            <div id="douyinLoadingSpinner" class="loading-spinner" style="display: none;">
+            <i class="fas fa-rotate btn-icon"></i>
+            <span id="syncBtnText" class="btn-text">确认并同步</span>
+            <div id="syncLoadingSpinner" class="loading-spinner" style="display: none;">
               <i class="fas fa-spinner fa-spin"></i>
             </div>
           </div>
         </button>
-        
-        <!-- 进度显示区域 -->
-        <div id="douyinProgressContainer" class="progress-section" style="display: none;">
+
+        <div id="syncProgressContainer" class="progress-section" style="display: none;">
           <div class="progress-header">
-            <span class="progress-label">数据获取进度</span>
-            <span class="progress-percentage">0%</span>
+            <span class="progress-label">正在同步到飞书</span>
+            <span id="syncProgressValue" class="progress-percentage">0%</span>
           </div>
           <div class="progress-bar-container">
-            <div id="douyinProgressBar" class="progress-bar-fill" style="width: 0%"></div>
+            <div id="syncProgressBar" class="progress-bar-fill" style="width: 0%"></div>
           </div>
-          <div id="douyinProgressText" class="progress-text">准备中...</div>
+          <div id="syncProgressText" class="progress-text">准备开始同步...</div>
+          <div class="sync-meta">
+            <span><i class="fas fa-lock"></i> 已加密</span>
+            <span><i class="fas fa-clock-rotate-left"></i> 刚刚同步</span>
+          </div>
         </div>
-        
-        <!-- 结果显示区域 -->
-        <div id="douyinResultContainer" class="result-section" style="display: none;">
-          <div id="douyinResultMessage" class="result-message"></div>
+
+        <div id="resultContainer" class="result-section" style="display: none;">
+          <div id="resultMessage" class="result-message"></div>
         </div>
       </div>
-    </div>
-    
-    <!-- 底部信息 -->
-    <div class="footer-info">
-      <p class="footer-text">
-        <i class="fas fa-shield-alt"></i>
-        数据来源于公开API，仅供学习使用
-      </p>
-    </div>
+    </section>
+
+    <section class="hint-card">
+      <i class="fas fa-circle-info"></i>
+      <p>请确保表字段与微信读书笔记属性一致，避免映射失败。</p>
+    </section>
+
+    <footer class="footer-info">© 2024 微信读书同步工具</footer>
   </main>
-  
+
   <script type="module" src="/src/index.ts"></script>
 </body>
 </html>

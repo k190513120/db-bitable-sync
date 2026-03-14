@@ -1,154 +1,273 @@
-# Amazon畅销榜爬虫 - GitHub Actions API服务
+# 微信读书 → 飞书多维表格边栏插件
 
-这是一个基于GitHub Actions的Amazon畅销榜爬虫API服务，支持通过API调用来爬取任意Amazon畅销榜页面的产品信息。
+该项目是一个飞书多维表格前端边栏插件。用户在插件内扫码登录微信读书后，可将划线与笔记同步到多维表格。
 
-## 🚀 功能特性
+## 功能说明
 
-- 🕷️ 支持爬取任意Amazon站点的畅销榜页面
-- 🔄 通过GitHub Actions API触发爬虫任务
-- 📊 返回结构化的产品数据（排名、名称、价格、评分、评论数等）
-- 💬 支持在GitHub Issue中自动回复爬取结果
-- 📁 自动保存爬取结果为工件文件
-- 🛡️ 内置错误处理和输入验证
+- 扫码登录：插件向你的同步服务创建会话，展示二维码并轮询登录状态
+- 自动同步：登录成功后触发同步任务，支持同步任务异步轮询
+- 自动建表：若不存在目标表则自动创建，存在则清空并重写
+- 数据映射：将书名、作者、章节、划线、笔记、标签、时间等字段写入飞书多维表格
 
-## 📋 部署步骤
-
-### 1. Fork或克隆仓库
+## 本地开发
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-name>
+npm install
+npm run server
+npm run dev
 ```
 
-### 2. 推送到GitHub
-
-确保将代码推送到GitHub仓库，GitHub Actions工作流会自动激活。
-
-### 3. 获取GitHub Personal Access Token
-
-1. 访问 GitHub Settings > Developer settings > Personal access tokens
-2. 创建新的token，需要以下权限：
-   - `repo` (完整仓库访问权限)
-   - `workflow` (工作流权限)
-
-## 🔧 使用方法
-
-### 方法1：使用提供的Python脚本
+构建发布包：
 
 ```bash
-# 安装依赖
-pip install requests
-
-# 触发爬虫（基本用法）
-python trigger_crawler.py <repo_owner> <repo_name> <github_token> <amazon_url>
-
-# 触发爬虫并在指定Issue中回复结果
-python trigger_crawler.py <repo_owner> <repo_name> <github_token> <amazon_url> <issue_number>
+npm run build
 ```
 
-**示例：**
-```bash
-# 爬取Amazon新加坡鞋类畅销榜
-python trigger_crawler.py username myrepo ghp_xxxxxxxxxxxx "https://www.amazon.sg/gp/bestsellers/shoes/6833566051/ref=zg_bs_nav_shoes_2_6833566051"
+后端默认地址是 `http://localhost:8787`。如果你要切换到线上服务，可通过前端环境变量配置：
 
-# 爬取并在Issue #123中回复结果
-python trigger_crawler.py username myrepo ghp_xxxxxxxxxxxx "https://www.amazon.sg/gp/bestsellers/shoes/6833566051/ref=zg_bs_nav_shoes_2_6833566051" 123
+```bash
+VITE_SYNC_BASE_URL=https://your-worker.your-subdomain.workers.dev
 ```
 
-### 方法2：直接调用GitHub API
+开发时建议开两个终端分别运行前后端。
+
+## Cloudflare Workers 部署（免费版可用）
+
+### 1) 安装依赖并登录 Cloudflare
 
 ```bash
-curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
-  -H "Accept: application/vnd.github.v3+json" \
+npm install
+npx wrangler login
+```
+
+### 2) 修改 Worker 名称（可选）
+
+编辑 [wrangler.toml](file:///Users/bytedance/Documents/html-template-main_微信读书/wrangler.toml) 的 `name` 字段，避免和你账号下已有 Worker 重名。
+
+### 3) 配置后端环境变量（推荐）
+
+首次可只配必须项：
+
+```bash
+npx wrangler secret put WEREAD_COOKIE
+```
+
+如需 CookieCloud，可再配置：
+
+```bash
+npx wrangler secret put CC_URL
+npx wrangler secret put CC_ID
+npx wrangler secret put CC_PASSWORD
+```
+
+可选 CORS 限制：
+
+```bash
+npx wrangler secret put ALLOWED_ORIGIN
+```
+
+### 4) 部署
+
+```bash
+npm run cf:deploy
+```
+
+部署成功后会得到 `https://<name>.<subdomain>.workers.dev`。
+
+### 5) 前端改为调用线上服务
+
+在本地创建 `.env.local`：
+
+```bash
+VITE_SYNC_BASE_URL=https://<name>.<subdomain>.workers.dev
+```
+
+然后重新执行：
+
+```bash
+npm run dev
+```
+
+## Stripe 支付接入（Cloudflare Worker）
+
+已内置以下支付接口：
+
+- `POST /api/stripe/create-checkout-session`
+- `POST /api/stripe/webhook`
+- `GET /api/stripe/entitlement?email=...`
+
+### Stripe 需要配置的密钥
+
+```bash
+npx wrangler secret put STRIPE_SECRET_KEY
+npx wrangler secret put STRIPE_PUBLISHABLE_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET
+```
+
+可选（推荐）：
+
+```bash
+npx wrangler secret put STRIPE_PRICE_ID
+```
+
+若不配 `STRIPE_PRICE_ID`，服务会按 `STRIPE_PRODUCT_NAME` 自动查找价格。
+
+### Checkout 创建示例
+
+```bash
+curl -X POST "https://<worker>/api/stripe/create-checkout-session" \
   -H "Content-Type: application/json" \
   -d '{
-    "event_type": "crawl-request",
-    "client_payload": {
-      "url": "https://www.amazon.sg/gp/bestsellers/shoes/6833566051/ref=zg_bs_nav_shoes_2_6833566051",
-      "issue_number": 123
-    }
-  }' \
-  https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/dispatches
+    "customerEmail":"you@example.com",
+    "successUrl":"https://your-app/success",
+    "cancelUrl":"https://your-app/cancel",
+    "productName":"微信读书同步多维表格"
+  }'
 ```
 
-### 方法3：手动触发工作流
+返回 `url` 后可直接跳转到 Stripe 结算页。
 
-1. 访问仓库的 Actions 页面
-2. 选择 "Amazon Crawler API" 工作流
-3. 点击 "Run workflow"
-4. 输入要爬取的Amazon URL
-5. 点击 "Run workflow" 按钮
+### Webhook 事件建议
 
-## 📊 返回数据格式
+在 Stripe Dashboard 的 webhook endpoint 配置：
 
-成功爬取后，会返回以下格式的JSON数据：
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+### 同步接口按订阅控制（可选）
+
+在 `wrangler.toml` 中将：
+
+```toml
+REQUIRE_ACTIVE_SUBSCRIPTION = "true"
+```
+
+开启后，调用 `/api/weread/sync` 需传 `customerEmail`，且该邮箱在 webhook 更新后处于有效订阅状态。
+
+## 飞书插件接入
+
+1. 在多维表格中打开「插件」→「自定义插件」
+2. 填入本地开发地址或部署地址（需 HTTPS）
+3. 在插件里粘贴微信读书 Cookie
+4. 选择“同步记录数量”
+5. 点击「确认并同步」
+
+## 同步服务端接口约定
+
+插件默认调用以下接口，你可以按需实现并映射到自己的后端：
+
+- `POST /api/weread/login/session`
+  - 返回：`{ sessionId, qrCodeUrl?, qrCodeBase64?, pollIntervalMs? }`
+- `GET /api/weread/login/session/:sessionId/status`
+  - 返回：`{ status: 'pending' | 'authorized' | 'expired' | 'failed', message? }`
+- `POST /api/weread/sync`
+  - 请求：`{ sessionId?, wereadCookie?, maxRecords? }`
+  - 返回：
+    - 直接返回数据：`{ highlights: [...] }`
+    - 或异步任务：`{ status: 'processing', jobId }`
+- `GET /api/weread/sync/:jobId`
+  - 返回：`{ status: 'processing' | 'completed', highlights?: [...] }`
+
+说明：Cloudflare 首版实现默认走“实时同步返回 `highlights`”，不依赖 `jobId` 轮询接口。
+
+本仓库已内置一个可运行的 Node 服务实现，路径为 [index.js](file:///Users/bytedance/Documents/html-template-main_微信读书/server/index.js)。支持两种登录态来源：
+
+- Provider 模式：配置 `WEREAD_LOGIN_PROVIDER_URL`，后端会把“创建会话/查询状态/拉取 cookie”转发到你的真实登录态抓取服务
+- 本地模式：不配置 Provider 时，使用本地 mock 二维码流程（便于联调）
+
+同步数据策略如下：
+
+- 若会话中存在 `wereadCookie`，优先直接调用微信读书接口抓取真实划线与笔记
+- 若抓取失败且配置了 `WEREAD_UPSTREAM_API`，回退到上游聚合接口
+- 若都不可用，回退到本地示例数据文件 [sample-highlights.json](file:///Users/bytedance/Documents/html-template-main_微信读书/server/sample-highlights.json)
+
+可选的手动绑定接口（调试用）：
+
+- `POST /api/weread/login/session/:sessionId/cookie`
+  - 请求：`{ wereadCookie: "..." }`
+  - 用途：将真实 cookie 绑定到会话并直接置为已授权
+
+说明：当“创建会话”失败时，前端会自动改为“直传 Cookie 到 `/api/weread/sync`”模式，不阻塞同步流程。
+
+## 真实登录态抓取服务接入
+
+当你已经有独立登录态抓取服务时，只需设置：
+
+```bash
+WEREAD_LOGIN_PROVIDER_URL=https://your-auth-provider.example.com
+```
+
+后端会自动尝试以下接口（按顺序）：
+
+- 创建会话（POST）：
+  - `/api/weread/auth/session`
+  - `/api/weread/login/session`
+  - `/session`
+- 查询状态（GET）：
+  - `/api/weread/auth/session/:id/status`
+  - `/api/weread/login/session/:id/status`
+  - `/session/:id/status`
+- 获取 cookie（GET）：
+  - `/api/weread/auth/session/:id/cookie`
+  - `/api/weread/login/session/:id/cookie`
+  - `/session/:id/cookie`
+  - `/session/:id`
+
+Provider 返回字段兼容：
+
+- 会话ID：`sessionId` 或 `id`
+- 二维码：`qrCodeUrl` / `qrUrl` / `qrConnectUrl` / `loginUrl` / `qrCodeBase64`
+- 状态：`pending|authorized|expired|failed`（也兼容 `success|confirmed|timeout|error`）
+- Cookie：`wereadCookie` 或 `cookie`
+
+说明：如果 Provider 返回的是微信登录页面 URL（例如 `open.weixin.qq.com/connect/qrconnect...`），前端会以内嵌页面展示，并提供“外部打开”兜底链接。
+说明：如果配置了 `WEREAD_LOGIN_PROVIDER_URL` 但服务临时不可用，后端会自动降级为手动 Cookie 模式，不会阻塞会话创建。
+
+## 后端环境变量
+
+- `PORT`：后端端口，默认 `8787`
+- `PUBLIC_BASE_URL`：二维码回调使用的公开地址，默认 `http://localhost:8787`
+- `SESSION_EXPIRE_MS`：扫码会话有效期（毫秒），默认 `300000`
+- `WEREAD_LOGIN_PROVIDER_URL`：可选，真实登录态抓取服务地址
+- `WEREAD_PREFER_REAL_DATA`：是否优先用 cookie 抓真实数据，默认 `true`
+- `WEREAD_STRICT_REAL_DATA`：有 Cookie 时真实抓取失败是否直接报错，默认 `true`
+- `WEREAD_MAX_SYNC_BOOKS`：每次最多扫描书籍数，默认 `2000`
+- `WEREAD_MAX_SYNC_RECORDS`：每次最多返回记录数，默认 `200`
+- `CC_URL`：可选，CookieCloud 服务地址
+- `CC_ID`：可选，CookieCloud 用户 ID
+- `CC_PASSWORD`：可选，CookieCloud 密码
+- `WEREAD_COOKIE`：可选，直接提供微信读书 Cookie
+- `WEREAD_UPSTREAM_API`：可选，上游微信读书聚合接口，返回 `highlights` 数组
+- `WEREAD_SAMPLE_FILE`：可选，本地示例数据文件路径
+
+Cookie 取值优先级：会话内 Cookie（扫码/Provider） > CookieCloud > `WEREAD_COOKIE`。
+若设置了 Cookie 且 `WEREAD_STRICT_REAL_DATA=true`，则不会再悄悄回退示例数据，抓取失败会直接报错提示。
+
+当前插件已优先支持“手动 Cookie / CookieCloud”模式；二维码仅作为可选能力保留。
+
+## highlights 数据建议字段
+
+插件已内置多套字段别名解析，推荐服务端返回下列结构之一：
 
 ```json
 {
-  "success": true,
-  "url": "https://www.amazon.sg/gp/bestsellers/...",
-  "count": 30,
-  "data": [
-    {
-      "rank": "1",
-      "name": "产品名称",
-      "price": "S$99.99",
-      "rating": "4.5 out of 5 stars",
-      "reviews": "1,234 ratings",
-      "link": "https://www.amazon.sg/dp/...",
-      "image_url": "https://images-na.ssl-images-amazon.com/..."
-    }
-  ]
+  "bookTitle": "书名",
+  "author": "作者",
+  "chapter": "章节",
+  "highlightText": "划线内容",
+  "noteText": "笔记内容",
+  "tags": ["标签1", "标签2"],
+  "highlightId": "划线ID",
+  "bookId": "书籍ID",
+  "highlightedAt": 1710000000000,
+  "updatedAt": 1710000000000
 }
 ```
 
-## 🔍 支持的Amazon站点
+## 数据安全
 
-理论上支持所有Amazon站点的畅销榜页面，包括但不限于：
-
-- 🇸🇬 Amazon Singapore (amazon.sg)
-- 🇺🇸 Amazon US (amazon.com)
-- 🇬🇧 Amazon UK (amazon.co.uk)
-- 🇩🇪 Amazon Germany (amazon.de)
-- 🇯🇵 Amazon Japan (amazon.co.jp)
-- 🇨🇦 Amazon Canada (amazon.ca)
-- 🇦🇺 Amazon Australia (amazon.com.au)
-
-## 📝 工作流程
-
-1. **API触发**：通过GitHub repository_dispatch事件触发工作流
-2. **环境准备**：设置Python环境并安装依赖
-3. **执行爬虫**：运行爬虫脚本并传入URL参数
-4. **结果处理**：解析爬取结果并格式化输出
-5. **结果反馈**：
-   - 在指定Issue中创建评论（如果提供了issue_number）
-   - 上传结果文件作为工件
-   - 在Actions日志中显示详细信息
-
-## ⚠️ 注意事项
-
-1. **频率限制**：请合理使用，避免过于频繁的请求
-2. **URL格式**：确保提供的是有效的Amazon畅销榜URL
-3. **Token安全**：妥善保管GitHub Personal Access Token
-4. **网络环境**：GitHub Actions运行在海外服务器，访问某些地区的Amazon可能受限
-
-## 🛠️ 本地测试
-
-你也可以在本地直接运行爬虫脚本：
-
-```bash
-# 安装依赖
-pip install -r requirements.txt
-
-# 运行爬虫
-python amazon_bestsellers_crawler.py "https://www.amazon.sg/gp/bestsellers/shoes/6833566051/ref=zg_bs_nav_shoes_2_6833566051"
-```
-
-## 📄 许可证
-
-本项目仅供学习和研究使用，请遵守相关网站的robots.txt和使用条款。
-
-## 🤝 贡献
-
-欢迎提交Issue和Pull Request来改进这个项目！
+- 插件不直接处理微信读书账号密码
+- 建议通过你自己的服务端托管鉴权和 Cookie
+- 建议对服务端接口增加签名、限流、审计日志

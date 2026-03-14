@@ -1,0 +1,14 @@
+name = "weread-sync-service"
+main = "cloudflare/worker.js"
+compatibility_date = "2026-03-11"
+
+[vars]
+WEREAD_MAX_SYNC_BOOKS = "2000"
+WEREAD_MAX_SYNC_RECORDS = "200"
+WEREAD_STRICT_REAL_DATA = "true"
+STRIPE_PRODUCT_NAME = "微信读书同步多维表格"
+REQUIRE_ACTIVE_SUBSCRIPTION = "false"
+
+[[kv_namespaces]]
+binding = "STRIPE_STATE"
+id = "d8d2ef35deaf4b529ef3fde00e5ae73c"

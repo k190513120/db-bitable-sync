@@ -1,0 +1,38 @@
+[
+  {
+    "bookTitle": "置身事内：中国政府与经济发展",
+    "author": "兰小欢",
+    "chapter": "第三章 地方政府的激励机制",
+    "highlightText": "很多经济问题，背后都是政治和激励机制问题。",
+    "noteText": "这句可以作为“制度影响行为”的案例。",
+    "tags": ["经济学", "制度"],
+    "highlightId": "demo-1",
+    "bookId": "book-1001",
+    "highlightedAt": 1736064000000,
+    "updatedAt": 1736067600000
+  },
+  {
+    "bookTitle": "原则",
+    "author": "瑞·达利欧",
+    "chapter": "拥抱现实，应对现实",
+    "highlightText": "痛苦 + 反思 = 进步。",
+    "noteText": "适合放在复盘体系里。",
+    "tags": ["成长", "方法论"],
+    "highlightId": "demo-2",
+    "bookId": "book-1002",
+    "highlightedAt": 1736150400000,
+    "updatedAt": 1736152200000
+  },
+  {
+    "bookTitle": "人类简史",
+    "author": "尤瓦尔·赫拉利",
+    "chapter": "认知革命",
+    "highlightText": "让智人征服世界的，正是讲故事的能力。",
+    "noteText": "",
+    "tags": ["历史", "认知"],
+    "highlightId": "demo-3",
+    "bookId": "book-1003",
+    "highlightedAt": 1736236800000,
+    "updatedAt": 1736238600000
+  }
+]
