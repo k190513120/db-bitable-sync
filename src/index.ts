@@ -20,8 +20,8 @@ import {
 } from './db-api';
 import { syncTableToBitable } from './db-table-operations';
 
-const LOCAL_SYNC_BASE_URL = (import.meta.env.VITE_SYNC_BASE_URL as string) || 'http://localhost:8787';
-const CF_BASE_URL = (import.meta.env.VITE_CF_BASE_URL as string) || '';
+const LOCAL_SYNC_BASE_URL = (import.meta.env.VITE_SYNC_BASE_URL as string) || 'https://dbsync.xiaomiao.win';
+const CF_BASE_URL = (import.meta.env.VITE_CF_BASE_URL as string) || 'https://dbsync.xiaomiao.win';
 
 let availableTables: DbTableMeta[] = [];
 // columns per table, populated after connect

@@ -2,6 +2,10 @@ name = "db-sync-service"
 main = "cloudflare/db-worker.js"
 compatibility_date = "2026-03-11"
 
+routes = [
+  { pattern = "dbsync.xiaomiao.win", custom_domain = true }
+]
+
 [vars]
 STRIPE_PRODUCT_NAME = "数据库同步飞书多维表格"
 

@@ -6,7 +6,7 @@ import { createJob, deleteJob, listJobs, getJobById, executeJob, restoreSchedule
 const app = express();
 const port = Number(process.env.PORT || 8787) || 8787;
 const host = process.env.HOST || '0.0.0.0';
-const baseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`;
+const baseUrl = process.env.PUBLIC_BASE_URL || `https://dbsync.xiaomiao.win`;
 const defaultRowLimit = Number(process.env.DB_DEFAULT_ROW_LIMIT || 500);
 const maxRowLimit = Number(process.env.DB_MAX_ROW_LIMIT || 5000);
 
