@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>数据库同步插件</title>
+  <title data-i18n="card.title">数据库同步插件</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -13,34 +13,33 @@
     <section class="brand-bar">
       <div class="brand-item">
         <span class="brand-icon"><i class="fas fa-database"></i></span>
-        <span class="brand-name">数据库</span>
+        <span class="brand-name" data-i18n="brand.database">数据库</span>
       </div>
       <span class="brand-arrow"><i class="fas fa-arrow-right"></i></span>
       <div class="brand-item">
         <span class="brand-icon brand-icon-blue"><i class="fas fa-cubes"></i></span>
-        <span class="brand-name">飞书多维表格</span>
+        <span class="brand-name" data-i18n="brand.bitable">飞书多维表格</span>
       </div>
     </section>
 
     <section class="feature-card">
       <div class="card-header">
         <div class="card-title-section">
-          <div class="eyebrow"><i class="fas fa-rotate"></i><span>BITABLE 插件</span></div>
-          <h1 class="card-title">数据库表同步</h1>
-          <p class="card-description">连接数据库，勾选要同步的数据表并写入多维表格。支持 MySQL、PostgreSQL、SQLite、MongoDB。</p>
+          <div class="eyebrow"><i class="fas fa-rotate"></i><span data-i18n="eyebrow.plugin">BITABLE 插件</span></div>
+          <h1 class="card-title" data-i18n="card.title">数据库表同步</h1>
+          <p class="card-description" data-i18n="card.description">连接数据库，勾选要同步的数据表并写入多维表格。支持 MySQL、PostgreSQL、MongoDB。</p>
         </div>
       </div>
 
       <div class="card-content">
         <!-- Database Type Selector -->
         <div class="form-item">
-          <label for="dbType">数据库类型</label>
+          <label for="dbType" data-i18n="label.dbType">数据库类型</label>
           <div class="field-shell">
             <i class="fas fa-server"></i>
             <select id="dbType" class="config-input config-select">
               <option value="mysql">MySQL</option>
               <option value="postgresql">PostgreSQL</option>
-              <option value="sqlite">SQLite</option>
               <option value="mongodb">MongoDB</option>
             </select>
           </div>
@@ -50,54 +49,43 @@
         <div id="standardDbFields" class="standard-db-fields">
           <div class="split-fields">
             <div class="form-item">
-              <label for="dbHost">数据库地址</label>
+              <label for="dbHost" data-i18n="label.dbHost">数据库地址</label>
               <div class="field-shell">
                 <i class="fas fa-network-wired"></i>
-                <input id="dbHost" class="config-input" placeholder="127.0.0.1" />
+                <input id="dbHost" class="config-input" data-i18n-placeholder="placeholder.dbHost" placeholder="127.0.0.1" />
               </div>
             </div>
             <div class="form-item">
-              <label for="dbPort">端口</label>
+              <label for="dbPort" data-i18n="label.dbPort">端口</label>
               <div class="field-shell">
                 <i class="fas fa-plug"></i>
-                <input id="dbPort" class="config-input" type="number" min="1" max="65535" placeholder="3306" />
+                <input id="dbPort" class="config-input" type="number" min="1" max="65535" data-i18n-placeholder="placeholder.dbPort" placeholder="3306" />
               </div>
             </div>
           </div>
 
           <div class="split-fields">
             <div class="form-item">
-              <label for="dbDatabase">数据库名</label>
+              <label for="dbDatabase" data-i18n="label.dbDatabase">数据库名</label>
               <div class="field-shell">
                 <i class="fas fa-database"></i>
-                <input id="dbDatabase" class="config-input" placeholder="test_db" />
+                <input id="dbDatabase" class="config-input" data-i18n-placeholder="placeholder.dbDatabase" placeholder="test_db" />
               </div>
             </div>
             <div class="form-item">
-              <label for="dbUsername">用户名</label>
+              <label for="dbUsername" data-i18n="label.dbUsername">用户名</label>
               <div class="field-shell">
                 <i class="fas fa-user"></i>
-                <input id="dbUsername" class="config-input" placeholder="root" />
+                <input id="dbUsername" class="config-input" data-i18n-placeholder="placeholder.dbUsername" placeholder="root" />
               </div>
             </div>
           </div>
 
           <div class="form-item">
-            <label for="dbPassword">密码</label>
+            <label for="dbPassword" data-i18n="label.dbPassword">密码</label>
             <div class="field-shell">
               <i class="fas fa-key"></i>
-              <input id="dbPassword" class="config-input" type="password" placeholder="请输入数据库密码" />
-            </div>
-          </div>
-        </div>
-
-        <!-- SQLite fields -->
-        <div id="sqliteFields" class="sqlite-fields" style="display: none;">
-          <div class="form-item">
-            <label for="sqliteFilePath">SQLite 文件路径</label>
-            <div class="field-shell">
-              <i class="fas fa-file"></i>
-              <input id="sqliteFilePath" class="config-input" placeholder="/path/to/database.sqlite" />
+              <input id="dbPassword" class="config-input" type="password" data-i18n-placeholder="placeholder.dbPassword" placeholder="请输入数据库密码" />
             </div>
           </div>
         </div>
@@ -105,17 +93,17 @@
         <!-- MongoDB fields -->
         <div id="mongoFields" class="mongo-fields" style="display: none;">
           <div class="form-item">
-            <label for="mongoUri">MongoDB URI</label>
+            <label for="mongoUri" data-i18n="label.mongoUri">MongoDB URI</label>
             <div class="field-shell">
               <i class="fas fa-link"></i>
-              <input id="mongoUri" class="config-input" placeholder="mongodb://user:pass@host:27017/dbname" />
+              <input id="mongoUri" class="config-input" data-i18n-placeholder="placeholder.mongoUri" placeholder="mongodb://user:pass@host:27017/dbname" />
             </div>
           </div>
           <div class="form-item">
-            <label for="mongoDatabase">数据库名</label>
+            <label for="mongoDatabase" data-i18n="label.mongoDatabase">数据库名</label>
             <div class="field-shell">
               <i class="fas fa-database"></i>
-              <input id="mongoDatabase" class="config-input" placeholder="mydb" />
+              <input id="mongoDatabase" class="config-input" data-i18n-placeholder="placeholder.mongoDatabase" placeholder="mydb" />
             </div>
           </div>
         </div>
@@ -123,7 +111,7 @@
         <button id="testConnection" class="main-action-btn secondary-action-btn">
           <div class="btn-content">
             <i class="fas fa-plug-circle-check btn-icon"></i>
-            <span id="connectBtnText" class="btn-text">连接数据库并加载表</span>
+            <span id="connectBtnText" class="btn-text" data-i18n="btn.connect">连接数据库并加载表</span>
             <div id="connectLoadingSpinner" class="loading-spinner" style="display: none;">
               <i class="fas fa-spinner fa-spin"></i>
             </div>
@@ -132,48 +120,48 @@
 
         <div id="tableConfigSection" class="table-config-section" style="display: none;">
           <div class="table-select-head">
-            <div class="table-select-title">选择要同步的数据表</div>
+            <div class="table-select-title" data-i18n="table.selectTitle">选择要同步的数据表</div>
             <label class="table-select-all">
               <input id="selectAllTables" type="checkbox" />
-              <span>全选</span>
+              <span data-i18n="table.selectAll">全选</span>
             </label>
           </div>
           <div id="tableList" class="table-list"></div>
 
           <!-- Sync Mode -->
           <div class="sync-mode-section">
-            <div class="sync-mode-title">同步模式</div>
+            <div class="sync-mode-title" data-i18n="sync.modeTitle">同步模式</div>
             <div class="sync-mode-options">
               <label class="sync-mode-option">
                 <input type="radio" name="syncMode" value="full" checked />
-                <span>全量替换</span>
-                <small>清空目标表后重新写入所有数据</small>
+                <span data-i18n="sync.modeFull">全量替换</span>
+                <small data-i18n="sync.modeFullDesc">清空目标表后重新写入所有数据</small>
               </label>
               <label class="sync-mode-option">
                 <input type="radio" name="syncMode" value="incremental" />
-                <span>增量追加</span>
-                <small>仅追加主键值大于上次同步的新数据</small>
+                <span data-i18n="sync.modeIncremental">增量追加</span>
+                <small data-i18n="sync.modeIncrementalDesc">仅追加主键值大于上次同步的新数据</small>
               </label>
             </div>
           </div>
 
           <!-- Incremental Config -->
           <div id="incrementalConfigSection" class="incremental-config-section" style="display: none;">
-            <div class="incremental-config-title">为每张表选择主键字段</div>
+            <div class="incremental-config-title" data-i18n="sync.incrementalTitle">为每张表选择主键字段</div>
             <div id="incrementalKeyList" class="incremental-key-list"></div>
           </div>
         </div>
 
         <div class="split-fields">
           <div class="form-item">
-            <label for="tablePrefix">目标表名前缀</label>
+            <label for="tablePrefix" data-i18n="label.tablePrefix">目标表名前缀</label>
             <div class="field-shell">
               <i class="fas fa-table"></i>
-              <input id="tablePrefix" class="config-input" placeholder="同步_" />
+              <input id="tablePrefix" class="config-input" data-i18n-placeholder="placeholder.tablePrefix" placeholder="同步_" />
             </div>
           </div>
           <div class="form-item">
-            <label for="rowLimit">每表同步行数</label>
+            <label for="rowLimit" data-i18n="label.rowLimit">每表同步行数</label>
             <div class="field-shell">
               <i class="fas fa-list-ol"></i>
               <input id="rowLimit" class="config-input" type="number" min="1" max="5000" placeholder="500" />
@@ -184,7 +172,7 @@
         <button id="startSync" class="main-action-btn">
           <div class="btn-content">
             <i class="fas fa-rotate btn-icon"></i>
-            <span id="syncBtnText" class="btn-text">确认并同步</span>
+            <span id="syncBtnText" class="btn-text" data-i18n="btn.sync">确认并同步</span>
             <div id="syncLoadingSpinner" class="loading-spinner" style="display: none;">
               <i class="fas fa-spinner fa-spin"></i>
             </div>
@@ -193,16 +181,16 @@
 
         <div id="syncProgressContainer" class="progress-section" style="display: none;">
           <div class="progress-header">
-            <span class="progress-label">正在同步到多维表格</span>
+            <span class="progress-label" data-i18n="progress.label">正在同步到多维表格</span>
             <span id="syncProgressValue" class="progress-percentage">0%</span>
           </div>
           <div class="progress-bar-container">
             <div id="syncProgressBar" class="progress-bar-fill" style="width: 0%"></div>
           </div>
-          <div id="syncProgressText" class="progress-text">准备开始同步...</div>
+          <div id="syncProgressText" class="progress-text" data-i18n="progress.preparing">准备开始同步...</div>
           <div class="sync-meta">
-            <span><i class="fas fa-lock"></i> 已加密</span>
-            <span><i class="fas fa-clock-rotate-left"></i> 刚刚同步</span>
+            <span><i class="fas fa-lock"></i> <span data-i18n="progress.encrypted">已加密</span></span>
+            <span><i class="fas fa-clock-rotate-left"></i> <span data-i18n="progress.justSynced">刚刚同步</span></span>
           </div>
         </div>
 
@@ -216,45 +204,45 @@
     <section class="feature-card scheduled-card">
       <div class="card-header">
         <div class="card-title-section">
-          <div class="eyebrow"><i class="fas fa-clock"></i><span>定时同步</span></div>
-          <h1 class="card-title">服务端定时任务</h1>
-          <p class="card-description">创建定时任务，即使关闭插件也能自动同步数据库到多维表格。App Token 自动获取，仅需填写授权码。</p>
+          <div class="eyebrow"><i class="fas fa-clock"></i><span data-i18n="scheduled.eyebrow">定时同步</span></div>
+          <h1 class="card-title" data-i18n="scheduled.title">服务端定时任务</h1>
+          <p class="card-description" data-i18n="scheduled.description">创建定时任务，即使关闭插件也能自动同步数据库到多维表格。App Token 自动获取，仅需填写授权码。</p>
         </div>
       </div>
       <div class="card-content scheduled-content">
         <div class="form-item">
-          <label for="bitableToken">多维表格授权码（Personal Access Token）</label>
+          <label for="bitableToken" data-i18n="scheduled.tokenLabel">多维表格授权码（Personal Access Token）</label>
           <div class="field-shell">
             <i class="fas fa-key"></i>
-            <input id="bitableToken" class="config-input" type="password" placeholder="请在飞书开放平台获取并粘贴" />
+            <input id="bitableToken" class="config-input" type="password" data-i18n-placeholder="scheduled.tokenPlaceholder" placeholder="请在飞书开放平台获取并粘贴" />
           </div>
         </div>
         <div class="form-item">
-          <label for="cronExpression">同步频率</label>
+          <label for="cronExpression" data-i18n="scheduled.frequencyLabel">同步频率</label>
           <div class="field-shell">
             <i class="fas fa-calendar-check"></i>
             <select id="cronExpression" class="config-input config-select">
-              <option value="*/30 * * * *">每 30 分钟</option>
-              <option value="0 * * * *" selected>每小时</option>
-              <option value="0 */3 * * *">每 3 小时</option>
-              <option value="0 */6 * * *">每 6 小时</option>
-              <option value="0 0 * * *">每天 0 点</option>
-              <option value="0 8 * * *">每天 8 点</option>
+              <option value="*/30 * * * *" data-i18n="cron.every30min">每 30 分钟</option>
+              <option value="0 * * * *" selected data-i18n="cron.everyHour">每小时</option>
+              <option value="0 */3 * * *" data-i18n="cron.every3hours">每 3 小时</option>
+              <option value="0 */6 * * *" data-i18n="cron.every6hours">每 6 小时</option>
+              <option value="0 0 * * *" data-i18n="cron.daily0">每天 0 点</option>
+              <option value="0 8 * * *" data-i18n="cron.daily8">每天 8 点</option>
             </select>
           </div>
         </div>
         <div class="form-item">
-          <label for="jobName">任务名称</label>
+          <label for="jobName" data-i18n="scheduled.jobNameLabel">任务名称</label>
           <div class="field-shell">
             <i class="fas fa-tag"></i>
-            <input id="jobName" class="config-input" placeholder="我的同步任务" />
+            <input id="jobName" class="config-input" data-i18n-placeholder="scheduled.jobNamePlaceholder" placeholder="我的同步任务" />
           </div>
         </div>
 
         <button id="createJob" class="main-action-btn secondary-action-btn">
           <div class="btn-content">
             <i class="fas fa-plus btn-icon"></i>
-            <span id="createJobBtnText" class="btn-text">创建定时任务</span>
+            <span id="createJobBtnText" class="btn-text" data-i18n="btn.createJob">创建定时任务</span>
             <div id="createJobSpinner" class="loading-spinner" style="display: none;">
               <i class="fas fa-spinner fa-spin"></i>
             </div>
@@ -262,7 +250,7 @@
         </button>
 
         <div id="jobListSection" class="job-list-section" style="display: none;">
-          <div class="job-list-title">已创建的任务</div>
+          <div class="job-list-title" data-i18n="scheduled.jobListTitle">已创建的任务</div>
           <div id="jobList" class="job-list"></div>
         </div>
 
@@ -274,8 +262,8 @@
         <div id="scheduledPaywall" class="paywall-overlay">
           <div class="paywall-content">
             <i class="fas fa-lock paywall-icon"></i>
-            <div class="paywall-text">仅限付费用户使用</div>
-            <button id="paywallUpgradeBtn" class="paywall-upgrade-btn">升级会员</button>
+            <div class="paywall-text" data-i18n="paywall.text">仅限付费用户使用</div>
+            <button id="paywallUpgradeBtn" class="paywall-upgrade-btn" data-i18n="paywall.upgradeBtn">升级会员</button>
           </div>
         </div>
       </div>
@@ -283,11 +271,31 @@
 
     <section class="hint-card">
       <i class="fas fa-circle-info"></i>
-      <p>提示：手动同步使用插件内 JS SDK 写入；定时同步通过服务端使用飞书 Open API + 授权码写入，即使关闭插件也能自动执行。</p>
+      <p data-i18n="hint.text">提示：手动同步使用插件内 JS SDK 写入；定时同步通过服务端使用飞书 Open API + 授权码写入，即使关闭插件也能自动执行。</p>
     </section>
 
-    <footer class="footer-info">&copy; 2026 数据库同步工具</footer>
+    <footer class="footer-info" data-i18n="footer.copyright">&copy; 2026 数据库同步工具</footer>
   </main>
+
+  <!-- Alipay QR Code Modal -->
+  <div id="alipayModal" class="alipay-modal" style="display: none;">
+    <div class="alipay-modal-backdrop"></div>
+    <div class="alipay-modal-content">
+      <button id="alipayModalClose" class="alipay-modal-close"><i class="fas fa-times"></i></button>
+      <div class="alipay-modal-header">
+        <img src="https://gw.alipayobjects.com/mdn/rms_ce4c6f/afts/img/A*WQ6fQYZfuUAAAAAAAAAAAAAAARQnAQ" alt="Alipay" class="alipay-logo" />
+        <div class="alipay-modal-title">支付宝扫码支付</div>
+      </div>
+      <div class="alipay-qr-container">
+        <div id="alipayQrCode" class="alipay-qr-code"></div>
+        <div id="alipayQrLoading" class="alipay-qr-loading">
+          <i class="fas fa-spinner fa-spin"></i> 正在生成二维码...
+        </div>
+      </div>
+      <div id="alipayAmount" class="alipay-amount"></div>
+      <div id="alipayStatus" class="alipay-status">请使用支付宝扫描二维码完成支付</div>
+    </div>
+  </div>
 
   <script type="module" src="/src/index.ts"></script>
 </body>

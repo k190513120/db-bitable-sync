@@ -5,7 +5,6 @@ export interface DbConnectionConfig {
   database: string;
   username: string;
   password: string;
-  filePath?: string;
   uri?: string;
 }
 
@@ -56,7 +55,6 @@ export interface ScheduledJobConfig {
   database?: string;
   username?: string;
   password?: string;
-  filePath?: string;
   uri?: string;
   selectedTables: string[];
   rowLimit: number;
@@ -198,5 +196,38 @@ export async function runScheduledJob(baseUrl: string, jobId: string): Promise<v
   await requestJson<{ status: string }>(
     `${baseUrl}/api/jobs/${encodeURIComponent(jobId)}/run`,
     { method: 'POST' }
+  );
+}
+
+/* ---------- Alipay APIs ---------- */
+
+export interface AlipayPrecreateResponse {
+  status: string;
+  qrCode: string;
+  outTradeNo: string;
+  totalAmount: string;
+}
+
+export interface AlipayQueryResponse {
+  status: string;
+  tradeStatus: string;  // WAIT_BUYER_PAY | TRADE_SUCCESS | TRADE_CLOSED
+  outTradeNo: string;
+}
+
+export async function createAlipayOrder(cfBaseUrl: string, userId: string): Promise<AlipayPrecreateResponse> {
+  return requestJson<AlipayPrecreateResponse>(
+    `${cfBaseUrl}/api/alipay/precreate`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    }
+  );
+}
+
+export async function queryAlipayOrder(cfBaseUrl: string, outTradeNo: string): Promise<AlipayQueryResponse> {
+  return requestJson<AlipayQueryResponse>(
+    `${cfBaseUrl}/api/alipay/query?outTradeNo=${encodeURIComponent(outTradeNo)}`,
+    { method: 'GET' }
   );
 }

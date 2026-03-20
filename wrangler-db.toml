@@ -1,10 +1,14 @@
 name = "db-sync-service"
 main = "cloudflare/db-worker.js"
 compatibility_date = "2026-03-11"
+compatibility_flags = ["nodejs_compat"]
 
 routes = [
   { pattern = "dbsync.xiaomiao.win", custom_domain = true }
 ]
+
+[triggers]
+crons = ["* * * * *"]
 
 [vars]
 STRIPE_PRODUCT_NAME = "数据库同步飞书多维表格"

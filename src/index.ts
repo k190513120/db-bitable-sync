@@ -1,6 +1,7 @@
 import $ from 'jquery';
 import { bitable } from '@lark-base-open/js-sdk';
 import './index.scss';
+import { t, detectLocale, setLocale, getLocale, applyI18n, isChineseLocale } from './i18n';
 import {
   connectDatabase,
   DbConnectionConfig,
@@ -16,12 +17,13 @@ import {
   listScheduledJobs,
   deleteScheduledJob,
   runScheduledJob,
-  ScheduledJob
+  ScheduledJob,
+  createAlipayOrder,
+  queryAlipayOrder
 } from './db-api';
 import { syncTableToBitable } from './db-table-operations';
 
-const LOCAL_SYNC_BASE_URL = (import.meta.env.VITE_SYNC_BASE_URL as string) || 'https://dbsync.xiaomiao.win';
-const CF_BASE_URL = (import.meta.env.VITE_CF_BASE_URL as string) || 'https://dbsync.xiaomiao.win';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'https://dbsync.xiaomiao.win';
 
 let availableTables: DbTableMeta[] = [];
 // columns per table, populated after connect
@@ -30,6 +32,8 @@ let tableColumnsCache: Record<string, { name: string; dataType: string }[]> = {}
 let cachedBitableAppToken: string = '';
 // user paid status
 let userIsPaid = false;
+// Alipay polling timer
+let alipayPollTimer: ReturnType<typeof setInterval> | null = null;
 
 const INCREMENTAL_STATE_KEY = 'db_sync_incremental_state';
 
@@ -46,7 +50,7 @@ function saveIncrementalState(state: Record<string, Record<string, { primaryKey:
 }
 
 function getDbKey(config: DbConnectionConfig): string {
-  return `${config.dbType}:${config.host}:${config.port}:${config.database || config.filePath || config.uri}`;
+  return `${config.dbType}:${config.host}:${config.port}:${config.database || config.uri}`;
 }
 
 $(function () {
@@ -54,6 +58,11 @@ $(function () {
 });
 
 async function initializeApp() {
+  // Detect and apply locale before anything else
+  const locale = await detectLocale();
+  setLocale(locale);
+  applyI18n();
+
   setDefaultConfig();
   bindEvents();
   await checkPaywallStatus();
@@ -72,10 +81,10 @@ async function checkPaywallStatus() {
   const $overlay = $('#scheduledPaywall');
   // Default: show paywall, only hide when confirmed paid
   userIsPaid = false;
-  if (CF_BASE_URL) {
+  if (API_BASE_URL) {
     try {
       const userId = await getCurrentUserId();
-      const quota = await checkDbQuota(CF_BASE_URL, userId);
+      const quota = await checkDbQuota(API_BASE_URL, userId);
       userIsPaid = quota.paid;
     } catch (_) {}
   }
@@ -90,7 +99,7 @@ function setDefaultConfig() {
   $('#dbHost').val('127.0.0.1');
   $('#dbPort').val('3306');
   $('#rowLimit').val('500');
-  $('#tablePrefix').val('同步_');
+  $('#tablePrefix').val(t('placeholder.tablePrefix'));
 }
 
 function bindEvents() {
@@ -101,28 +110,33 @@ function bindEvents() {
   $('input[name="syncMode"]').on('change', handleSyncModeChange);
   $('#createJob').on('click', handleCreateScheduledJob);
   $('#paywallUpgradeBtn').on('click', handlePaywallUpgrade);
+  // Alipay modal
+  $('#alipayModalClose').on('click', closeAlipayModal);
+  $('.alipay-modal-backdrop').on('click', closeAlipayModal);
 }
 
 async function handlePaywallUpgrade() {
   try {
     const userId = await getCurrentUserId();
-    const checkout = await createDbCheckoutSession(CF_BASE_URL, userId);
-    if (checkout.url) {
-      openCheckoutInNewTab(checkout.url);
+    if (isChineseLocale()) {
+      await openAlipayPayment(userId);
+    } else {
+      const checkout = await createDbCheckoutSession(API_BASE_URL, userId);
+      if (checkout.url) {
+        openCheckoutInNewTab(checkout.url);
+      }
     }
   } catch (_) {
-    showJobResult('无法打开支付页面，请稍后再试。', 'error');
+    showJobResult(t('msg.paymentFailed'), 'error');
   }
 }
 
 function handleDbTypeChange() {
   const dbType = String($('#dbType').val() || 'mysql');
   const $standard = $('#standardDbFields');
-  const $sqlite = $('#sqliteFields');
   const $mongo = $('#mongoFields');
 
   $standard.hide();
-  $sqlite.hide();
   $mongo.hide();
 
   // Clear previous table list when switching DB type
@@ -139,9 +153,6 @@ function handleDbTypeChange() {
     case 'postgresql':
       $standard.show();
       $('#dbPort').val('5432');
-      break;
-    case 'sqlite':
-      $sqlite.show();
       break;
     case 'mongodb':
       $mongo.show();
@@ -164,7 +175,7 @@ function renderIncrementalConfig() {
   $list.empty();
   const selectedTables = getSelectedTables();
   if (!selectedTables.length) {
-    $list.append('<div class="incremental-empty">请先勾选要同步的数据表</div>');
+    $list.append(`<div class="incremental-empty">${escapeHtml(t('sync.incrementalEmpty'))}</div>`);
     return;
   }
   for (const tableName of selectedTables) {
@@ -174,7 +185,7 @@ function renderIncrementalConfig() {
       <div class="incremental-key-item">
         <span class="incremental-table-name">${escapeHtml(tableName)}</span>
         <select class="config-input config-select incremental-pk-select" data-table="${escapeHtml(tableName)}">
-          <option value="">-- 选择主键 --</option>
+          <option value="">${escapeHtml(t('sync.incrementalSelectPk'))}</option>
           ${optionsHtml}
         </select>
       </div>
@@ -184,17 +195,6 @@ function renderIncrementalConfig() {
 
 function getDbConfig(): DbConnectionConfig {
   const dbType = String($('#dbType').val() || 'mysql');
-  if (dbType === 'sqlite') {
-    return {
-      dbType,
-      host: '',
-      port: 0,
-      database: '',
-      username: '',
-      password: '',
-      filePath: String($('#sqliteFilePath').val() || '').trim()
-    };
-  }
   if (dbType === 'mongodb') {
     return {
       dbType,
@@ -263,18 +263,14 @@ function getIncrementalConfig(): IncrementalConfig {
 }
 
 function validateDbConfig(config: DbConnectionConfig) {
-  if (config.dbType === 'sqlite') {
-    if (!config.filePath) throw new Error('请输入 SQLite 文件路径');
-    return;
-  }
   if (config.dbType === 'mongodb') {
-    if (!config.uri && !config.host) throw new Error('请输入 MongoDB URI');
-    if (!config.database) throw new Error('请输入数据库名');
+    if (!config.uri && !config.host) throw new Error(t('validate.mongoUri'));
+    if (!config.database) throw new Error(t('validate.dbName'));
     return;
   }
-  if (!config.host) throw new Error('请输入数据库地址');
-  if (!config.database) throw new Error('请输入数据库名');
-  if (!config.username) throw new Error('请输入用户名');
+  if (!config.host) throw new Error(t('validate.dbHost'));
+  if (!config.database) throw new Error(t('validate.dbName'));
+  if (!config.username) throw new Error(t('validate.dbUser'));
 }
 
 function escapeHtml(text: string): string {
@@ -290,12 +286,14 @@ function renderTableList(tables: DbTableMeta[]) {
   const list = $('#tableList');
   list.empty();
   if (!tables.length) {
-    list.append('<div class="table-empty">当前数据库没有可同步的数据表</div>');
+    list.append(`<div class="table-empty">${escapeHtml(t('table.empty'))}</div>`);
     $('#tableConfigSection').hide();
     return;
   }
   for (const table of tables) {
-    const rowText = table.estimatedRows >= 0 ? `${table.estimatedRows} 行` : '行数未知';
+    const rowText = table.estimatedRows >= 0
+      ? t('table.rows', { count: table.estimatedRows })
+      : t('table.rowsUnknown');
     const itemHtml = `
       <label class="table-item">
         <input data-table-checkbox="1" type="checkbox" value="${escapeHtml(table.tableName)}" />
@@ -336,7 +334,7 @@ async function getCurrentUserId(): Promise<string> {
   if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
     return 'local_debug_user';
   }
-  throw new Error('无法获取当前登录用户信息，请在多维表格内打开插件后重试');
+  throw new Error(t('msg.userIdError'));
 }
 
 async function handleTestConnection() {
@@ -345,8 +343,8 @@ async function handleTestConnection() {
     validateDbConfig(config);
     setConnectLoading(true);
     const dbTypeName = String($('#dbType option:selected').text() || config.dbType);
-    updateProgress(8, `正在连接 ${dbTypeName}`);
-    const result = await connectDatabase(LOCAL_SYNC_BASE_URL, config);
+    updateProgress(8, t('msg.connectingDb', { dbType: dbTypeName }));
+    const result = await connectDatabase(API_BASE_URL, config);
     availableTables = result.tables || [];
 
     // Fetch column info for each table (for incremental config)
@@ -355,7 +353,7 @@ async function handleTestConnection() {
       // Do a sync with rowLimit=1 to just get schema info
       try {
         const schemaResult = await syncDatabaseTables(
-          LOCAL_SYNC_BASE_URL,
+          API_BASE_URL,
           config,
           availableTables.map((t) => t.tableName),
           1
@@ -371,10 +369,10 @@ async function handleTestConnection() {
     }
 
     renderTableList(availableTables);
-    updateProgress(20, `连接成功，已加载 ${availableTables.length} 张表`);
-    showResult(`连接成功，已获取 ${availableTables.length} 张数据表，请勾选后开始同步。`, 'success');
+    updateProgress(20, t('msg.connectLoaded', { count: availableTables.length }));
+    showResult(t('msg.connectSuccess', { count: availableTables.length }), 'success');
   } catch (error) {
-    showResult(`连接失败：${(error as Error).message}`, 'error');
+    showResult(t('msg.connectFailed', { error: (error as Error).message }), 'error');
     hideProgress();
   } finally {
     setConnectLoading(false);
@@ -392,12 +390,12 @@ async function handleStartSync() {
     const incrementalConfig = syncMode === 'incremental' ? getIncrementalConfig() : {};
 
     if (!selectedTables.length) {
-      throw new Error('请至少选择一张要同步的数据表');
+      throw new Error(t('msg.selectAtLeastOne'));
     }
     if (syncMode === 'incremental') {
       const hasPk = selectedTables.some((t) => incrementalConfig[t]?.primaryKey);
       if (!hasPk) {
-        throw new Error('增量模式下，请至少为一张表选择主键字段');
+        throw new Error(t('msg.incrementalNoPk'));
       }
     }
 
@@ -405,23 +403,28 @@ async function handleStartSync() {
 
     // Check quota via Cloudflare Worker if configured
     let quotaInfo: DbQuotaResponse | null = null;
-    if (CF_BASE_URL) {
+    if (API_BASE_URL) {
       try {
-        quotaInfo = await checkDbQuota(CF_BASE_URL, userId);
+        quotaInfo = await checkDbQuota(API_BASE_URL, userId);
         if (!quotaInfo.paid && quotaInfo.remaining <= 0) {
+          // Route to appropriate payment method
+          if (isChineseLocale()) {
+            await openAlipayPayment(userId);
+            return;
+          }
           try {
-            const checkout = await createDbCheckoutSession(CF_BASE_URL, userId);
+            const checkout = await createDbCheckoutSession(API_BASE_URL, userId);
             if (checkout.url) {
               const opened = openCheckoutInNewTab(checkout.url);
               if (!opened) {
-                showResult('免费额度已用完（3 次），请点击支付后继续使用。', 'info');
+                showResult(t('msg.quotaExhaustedClick'), 'info');
                 return;
               }
-              showResult('免费额度已用完（3 次），已在新窗口打开支付页面。', 'info');
+              showResult(t('msg.quotaExhaustedNewTab'), 'info');
               return;
             }
           } catch (_) {}
-          showResult('免费额度已用完（3 次），请购买后继续使用。', 'info');
+          showResult(t('msg.quotaExhausted'), 'info');
           return;
         }
       } catch (_) {}
@@ -429,9 +432,9 @@ async function handleStartSync() {
 
     setSyncLoading(true);
     const dbTypeName = String($('#dbType option:selected').text() || config.dbType);
-    updateProgress(15, `正在从 ${dbTypeName} 拉取表结构和数据`);
+    updateProgress(15, t('msg.fetchingData', { dbType: dbTypeName }));
     const syncResult = await syncDatabaseTables(
-      LOCAL_SYNC_BASE_URL,
+      API_BASE_URL,
       config,
       selectedTables,
       rowLimit,
@@ -441,27 +444,31 @@ async function handleStartSync() {
     );
     if (syncResult.status === 'payment_required') {
       const checkoutUrl = String(syncResult.checkoutUrl || '');
+      if (isChineseLocale()) {
+        await openAlipayPayment(userId);
+        return;
+      }
       if (checkoutUrl) {
         const opened = openCheckoutInNewTab(checkoutUrl);
         if (!opened) {
-          showResult('当前同步额度不足，请点击支付后继续使用。', 'info');
+          showResult(t('msg.quotaInsufficient'), 'info');
           return;
         }
-        showResult('当前同步额度不足，已在新窗口打开支付页面。', 'info');
+        showResult(t('msg.quotaInsufficientNewTab'), 'info');
         return;
       }
-      throw new Error(syncResult.message || '额度不足，请先支付');
+      throw new Error(syncResult.message || t('msg.quotaInsufficientGeneric'));
     }
     const tablePayloadList: DbTablePayload[] = Array.isArray(syncResult.tables) ? syncResult.tables : [];
     if (!tablePayloadList.length) {
-      throw new Error('未获取到可同步的数据表内容');
+      throw new Error(t('msg.noSyncTables'));
     }
     const summary: string[] = [];
     for (let index = 0; index < tablePayloadList.length; index += 1) {
       const tablePayload = tablePayloadList[index];
       const startProgress = 20 + (index / tablePayloadList.length) * 75;
       const spanProgress = 75 / tablePayloadList.length;
-      updateProgress(startProgress, `正在写入 ${tablePayload.tableName}`);
+      updateProgress(startProgress, t('msg.writingTable', { tableName: tablePayload.tableName }));
       const result = await syncTableToBitable(
         tablePayload,
         tablePrefix,
@@ -471,7 +478,7 @@ async function handleStartSync() {
         },
         { syncMode: syncMode as 'full' | 'incremental' }
       );
-      summary.push(`${result.tableName}（${result.rowCount} 行）`);
+      summary.push(t('msg.tableResult', { tableName: result.tableName, rowCount: result.rowCount }));
 
       // Update incremental state
       if (syncMode === 'incremental' && incrementalConfig[tablePayload.tableName]?.primaryKey) {
@@ -491,14 +498,15 @@ async function handleStartSync() {
     }
 
     // Update usage after successful sync
-    if (CF_BASE_URL && quotaInfo && !quotaInfo.paid) {
-      await updateDbUsage(CF_BASE_URL, userId, tablePayloadList.length).catch(() => {});
+    if (API_BASE_URL && quotaInfo && !quotaInfo.paid) {
+      await updateDbUsage(API_BASE_URL, userId, tablePayloadList.length).catch(() => {});
     }
 
-    updateProgress(100, '同步完成');
-    showResult(`同步完成：${summary.join('，')}`, 'success');
+    updateProgress(100, t('msg.syncComplete'));
+    const joiner = getLocale() === 'zh' ? '，' : ', ';
+    showResult(t('msg.syncCompleteDetail', { summary: summary.join(joiner) }), 'success');
   } catch (error) {
-    showResult(`同步失败：${(error as Error).message}`, 'error');
+    showResult(t('msg.syncFailed', { error: (error as Error).message }), 'error');
     hideProgress();
   } finally {
     setSyncLoading(false);
@@ -512,22 +520,22 @@ async function handleCreateScheduledJob() {
     const config = getDbConfig();
     validateDbConfig(config);
     const selectedTables = getSelectedTables();
-    if (!selectedTables.length) throw new Error('请先连接数据库并勾选要同步的表');
+    if (!selectedTables.length) throw new Error(t('validate.noTablesSelected'));
 
     // Read token from input, auto-fetch App Token via JS SDK
     const bitableToken = String($('#bitableToken').val() || '').trim();
-    if (!bitableToken) throw new Error('请输入多维表格授权码');
+    if (!bitableToken) throw new Error(t('validate.bitableToken'));
 
     await fetchBitableAppToken();
-    if (!cachedBitableAppToken) throw new Error('无法获取多维表格 App Token，请确保在飞书多维表格内使用本插件');
+    if (!cachedBitableAppToken) throw new Error(t('validate.bitableAppToken'));
 
     const cronExpression = String($('#cronExpression').val() || '0 * * * *');
-    const jobName = String($('#jobName').val() || '').trim() || '定时同步任务';
+    const jobName = String($('#jobName').val() || '').trim() || t('scheduled.defaultJobName');
     const syncMode = getSyncMode();
     const incrementalConfig = syncMode === 'incremental' ? getIncrementalConfig() : {};
 
     setCreateJobLoading(true);
-    const job = await createScheduledJob(LOCAL_SYNC_BASE_URL, {
+    const job = await createScheduledJob(API_BASE_URL, {
       name: jobName,
       dbType: config.dbType,
       host: config.host,
@@ -535,7 +543,6 @@ async function handleCreateScheduledJob() {
       database: config.database,
       username: config.username,
       password: config.password,
-      filePath: config.filePath,
       uri: config.uri,
       selectedTables,
       rowLimit: getRowLimit(),
@@ -546,10 +553,10 @@ async function handleCreateScheduledJob() {
       bitableAppToken: cachedBitableAppToken,
       cronExpression
     });
-    showJobResult(`定时任务创建成功：${job.name}（${job.cronExpression}）`, 'success');
+    showJobResult(t('msg.jobCreateSuccess', { name: job.name, cron: job.cronExpression }), 'success');
     await loadJobList();
   } catch (error) {
-    showJobResult(`创建失败：${(error as Error).message}`, 'error');
+    showJobResult(t('msg.jobCreateFailed', { error: (error as Error).message }), 'error');
   } finally {
     setCreateJobLoading(false);
   }
@@ -557,7 +564,7 @@ async function handleCreateScheduledJob() {
 
 async function loadJobList() {
   try {
-    const jobs = await listScheduledJobs(LOCAL_SYNC_BASE_URL);
+    const jobs = await listScheduledJobs(API_BASE_URL);
     renderJobList(jobs);
   } catch (_) {
     // Server might not be running
@@ -574,19 +581,19 @@ function renderJobList(jobs: ScheduledJob[]) {
   $list.empty();
   for (const job of jobs) {
     const statusClass = job.lastStatus === 'success' ? 'job-status-ok' : job.lastStatus === 'failed' ? 'job-status-fail' : 'job-status-pending';
-    const statusText = job.lastStatus === 'success' ? '成功' : job.lastStatus === 'failed' ? '失败' : '待执行';
-    const lastRunText = job.lastRun ? new Date(job.lastRun).toLocaleString() : '尚未执行';
+    const statusText = job.lastStatus === 'success' ? t('job.statusSuccess') : job.lastStatus === 'failed' ? t('job.statusFailed') : t('job.statusPending');
+    const lastRunText = job.lastRun ? new Date(job.lastRun).toLocaleString() : t('job.neverRun');
     $list.append(`
       <div class="job-item" data-job-id="${escapeHtml(job.id)}">
         <div class="job-info">
           <div class="job-name">${escapeHtml(job.name)}</div>
           <div class="job-detail">${escapeHtml(job.dbType)} · ${escapeHtml(job.database)} · ${escapeHtml(job.cronExpression)}</div>
-          <div class="job-detail">上次执行: ${escapeHtml(lastRunText)} <span class="${statusClass}">${escapeHtml(statusText)}</span></div>
+          <div class="job-detail">${escapeHtml(t('job.lastRun'))}: ${escapeHtml(lastRunText)} <span class="${statusClass}">${escapeHtml(statusText)}</span></div>
           ${job.lastError ? `<div class="job-error">${escapeHtml(job.lastError)}</div>` : ''}
         </div>
         <div class="job-actions">
-          <button class="job-run-btn" data-job-id="${escapeHtml(job.id)}" title="立即执行"><i class="fas fa-play"></i></button>
-          <button class="job-delete-btn" data-job-id="${escapeHtml(job.id)}" title="删除"><i class="fas fa-trash"></i></button>
+          <button class="job-run-btn" data-job-id="${escapeHtml(job.id)}" title="${escapeHtml(t('job.runTitle'))}"><i class="fas fa-play"></i></button>
+          <button class="job-delete-btn" data-job-id="${escapeHtml(job.id)}" title="${escapeHtml(t('job.deleteTitle'))}"><i class="fas fa-trash"></i></button>
         </div>
       </div>
     `);
@@ -596,11 +603,11 @@ function renderJobList(jobs: ScheduledJob[]) {
     const jobId = String($(this).data('job-id') || '');
     if (!jobId) return;
     try {
-      await deleteScheduledJob(LOCAL_SYNC_BASE_URL, jobId);
-      showJobResult('任务已删除', 'success');
+      await deleteScheduledJob(API_BASE_URL, jobId);
+      showJobResult(t('job.deleted'), 'success');
       await loadJobList();
     } catch (error) {
-      showJobResult(`删除失败：${(error as Error).message}`, 'error');
+      showJobResult(t('msg.jobDeleteFailed', { error: (error as Error).message }), 'error');
     }
   });
 
@@ -610,15 +617,103 @@ function renderJobList(jobs: ScheduledJob[]) {
     const $btn = $(this);
     $btn.prop('disabled', true);
     try {
-      await runScheduledJob(LOCAL_SYNC_BASE_URL, jobId);
-      showJobResult('手动执行成功', 'success');
+      await runScheduledJob(API_BASE_URL, jobId);
+      showJobResult(t('job.manualRunSuccess'), 'success');
       await loadJobList();
     } catch (error) {
-      showJobResult(`执行失败：${(error as Error).message}`, 'error');
+      showJobResult(t('msg.jobRunFailed', { error: (error as Error).message }), 'error');
     } finally {
       $btn.prop('disabled', false);
     }
   });
+}
+
+/* ---------- Alipay Payment ---------- */
+
+async function openAlipayPayment(userId: string) {
+  const $modal = $('#alipayModal');
+  const $qrCode = $('#alipayQrCode');
+  const $loading = $('#alipayQrLoading');
+  const $status = $('#alipayStatus');
+  const $amount = $('#alipayAmount');
+
+  $modal.show();
+  $qrCode.empty();
+  $loading.show();
+  $status.text('正在生成二维码...');
+  $amount.text('');
+
+  try {
+    const order = await createAlipayOrder(API_BASE_URL, userId);
+    $loading.hide();
+    $amount.text(`¥${order.totalAmount}`);
+    $status.text('请使用支付宝扫描二维码完成支付');
+
+    // Generate QR code using a canvas-based approach (no external library)
+    renderQrCode($qrCode[0], order.qrCode);
+
+    // Start polling for payment status
+    startAlipayPolling(order.outTradeNo);
+  } catch (error) {
+    $loading.hide();
+    $status.text(t('msg.paymentFailed'));
+  }
+}
+
+function renderQrCode(container: HTMLElement, url: string) {
+  // Use an img tag with QR code API for simplicity
+  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+  const img = document.createElement('img');
+  img.src = qrImgUrl;
+  img.alt = 'Alipay QR Code';
+  img.width = 200;
+  img.height = 200;
+  img.style.borderRadius = '8px';
+  container.appendChild(img);
+}
+
+function startAlipayPolling(outTradeNo: string) {
+  stopAlipayPolling();
+  let attempts = 0;
+  const maxAttempts = 120; // 2 minutes at 1s interval
+
+  alipayPollTimer = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      stopAlipayPolling();
+      $('#alipayStatus').text('支付超时，请关闭后重试');
+      return;
+    }
+    try {
+      const result = await queryAlipayOrder(API_BASE_URL, outTradeNo);
+      if (result.tradeStatus === 'TRADE_SUCCESS') {
+        stopAlipayPolling();
+        $('#alipayStatus').text('支付成功！').addClass('alipay-status-success');
+        userIsPaid = true;
+        $('#scheduledPaywall').hide();
+        setTimeout(() => closeAlipayModal(), 1500);
+      } else if (result.tradeStatus === 'TRADE_CLOSED') {
+        stopAlipayPolling();
+        $('#alipayStatus').text('交易已关闭');
+      }
+    } catch (_) {
+      // Ignore polling errors, will retry
+    }
+  }, 1000);
+}
+
+function stopAlipayPolling() {
+  if (alipayPollTimer) {
+    clearInterval(alipayPollTimer);
+    alipayPollTimer = null;
+  }
+}
+
+function closeAlipayModal() {
+  stopAlipayPolling();
+  $('#alipayModal').hide();
+  $('#alipayQrCode').empty();
+  $('#alipayStatus').removeClass('alipay-status-success');
 }
 
 /* ---------- UI helpers ---------- */
@@ -629,7 +724,7 @@ function openCheckoutInNewTab(checkoutUrl: string): boolean {
     if (nextWindow) return true;
   } catch (_) {}
   // Fallback: show a clickable link for iframe environments where window.open is blocked
-  showResult(`请点击以下链接完成支付：<a href="${escapeHtml(checkoutUrl)}" target="_blank" rel="noopener noreferrer">打开支付页面</a>`, 'info');
+  showResult(t('msg.openPaymentLink', { url: checkoutUrl }), 'info');
   return true;
 }
 
@@ -638,7 +733,7 @@ function setConnectLoading(loading: boolean) {
   const text = $('#connectBtnText');
   const spinner = $('#connectLoadingSpinner');
   button.prop('disabled', loading);
-  text.text(loading ? '连接中...' : '连接数据库并加载表');
+  text.text(loading ? t('btn.connecting') : t('btn.connect'));
   if (loading) spinner.show();
   else spinner.hide();
 }
@@ -648,7 +743,7 @@ function setSyncLoading(loading: boolean) {
   const text = $('#syncBtnText');
   const spinner = $('#syncLoadingSpinner');
   button.prop('disabled', loading);
-  text.text(loading ? '同步中...' : '确认并同步');
+  text.text(loading ? t('btn.syncing') : t('btn.sync'));
   if (loading) spinner.show();
   else spinner.hide();
 }
@@ -658,7 +753,7 @@ function setCreateJobLoading(loading: boolean) {
   const text = $('#createJobBtnText');
   const spinner = $('#createJobSpinner');
   button.prop('disabled', loading);
-  text.text(loading ? '创建中...' : '创建定时任务');
+  text.text(loading ? t('btn.creatingJob') : t('btn.createJob'));
   if (loading) spinner.show();
   else spinner.hide();
 }

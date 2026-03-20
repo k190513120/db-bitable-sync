@@ -738,6 +738,119 @@ textarea.config-input {
   }
 }
 
+/* Alipay Modal */
+.alipay-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alipay-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.alipay-modal-content {
+  position: relative;
+  z-index: 1;
+  width: 340px;
+  max-width: 90vw;
+  background: linear-gradient(165deg, rgba(26, 26, 33, 0.98), rgba(18, 18, 24, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 28px 24px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.alipay-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #96a8cc;
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+}
+
+.alipay-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.alipay-logo {
+  height: 28px;
+  object-fit: contain;
+}
+
+.alipay-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e8eefb;
+}
+
+.alipay-qr-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  margin-bottom: 16px;
+}
+
+.alipay-qr-code {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  img {
+    border-radius: 8px;
+    background: #fff;
+    padding: 8px;
+  }
+}
+
+.alipay-qr-loading {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.alipay-amount {
+  font-size: 28px;
+  font-weight: 700;
+  color: #ff6d1f;
+  margin-bottom: 8px;
+}
+
+.alipay-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.alipay-status-success {
+  color: var(--ok) !important;
+  font-weight: 600;
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
