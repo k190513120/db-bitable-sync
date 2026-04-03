@@ -45,6 +45,19 @@
           </div>
         </div>
 
+        <!-- Private network proxy toggle -->
+        <div class="form-item proxy-toggle-row">
+          <label class="proxy-toggle-label">
+            <input id="useProxy" type="checkbox" />
+            <span data-i18n="label.useProxy">内网数据库（需配置 IP 白名单）</span>
+          </label>
+          <div id="proxyTip" class="proxy-tip" style="display: none;">
+            <i class="fas fa-circle-info"></i>
+            <span data-i18n="tip.proxyIp">请在数据库防火墙中将以下 IP 加入白名单：</span>
+            <code class="proxy-ip">165.154.200.47</code>
+          </div>
+        </div>
+
         <!-- Standard DB fields (MySQL / PostgreSQL) -->
         <div id="standardDbFields" class="standard-db-fields">
           <div class="split-fields">

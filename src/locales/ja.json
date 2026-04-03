@@ -12,6 +12,8 @@
   "label.dbDatabase": "データベース名",
   "label.dbUsername": "ユーザー名",
   "label.dbPassword": "パスワード",
+  "label.useProxy": "プライベートネットワークDB（IPホワイトリスト必要）",
+  "tip.proxyIp": "データベースのファイアウォールに以下のIPを追加してください：",
   "label.mongoUri": "MongoDB URI",
   "label.mongoDatabase": "データベース名",
 

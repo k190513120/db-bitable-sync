@@ -12,6 +12,8 @@
   "label.dbDatabase": "Database",
   "label.dbUsername": "Username",
   "label.dbPassword": "Password",
+  "label.useProxy": "Private network DB (IP whitelist required)",
+  "tip.proxyIp": "Add the following IP to your database firewall whitelist:",
   "label.mongoUri": "MongoDB URI",
   "label.mongoDatabase": "Database",
 

@@ -12,6 +12,8 @@
   "label.dbDatabase": "数据库名",
   "label.dbUsername": "用户名",
   "label.dbPassword": "密码",
+  "label.useProxy": "内网数据库（需配置 IP 白名单）",
+  "tip.proxyIp": "请在数据库防火墙中将以下 IP 加入白名单：",
   "label.mongoUri": "MongoDB URI",
   "label.mongoDatabase": "数据库名",
 

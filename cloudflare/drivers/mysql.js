@@ -70,8 +70,12 @@ class MySQLConnection {
     this.pending = new Uint8Array(0);
   }
 
-  async open(host, port, username, password, database) {
-    this.socket = connect({ hostname: host, port });
+  async open(host, port, username, password, database, proxyUrl) {
+    const connectOpts = { hostname: host, port };
+    if (proxyUrl) {
+      connectOpts.socksProxy = proxyUrl;
+    }
+    this.socket = connect(connectOpts);
     this.reader = this.socket.readable.getReader();
     this.writer = this.socket.writable.getWriter();
 
@@ -390,7 +394,8 @@ async function withConnection(config, fn) {
     config.port || 3306,
     config.username,
     config.password,
-    config.database
+    config.database,
+    config.proxyUrl
   );
   try {
     return await fn(conn);

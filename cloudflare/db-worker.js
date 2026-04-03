@@ -60,8 +60,10 @@ function normalizeRowLimit(value, fallback = DEFAULT_ROW_LIMIT) {
   return Math.max(1, Math.min(MAX_ROW_LIMIT, Math.floor(n)));
 }
 
-function normalizeDbConfig(body) {
+function normalizeDbConfig(body, env) {
   const dbType = String(body?.dbType || 'mysql').toLowerCase();
+  const useProxy = body?.useProxy === true;
+  const proxyUrl = useProxy ? (String(env?.SOCKS5_PROXY_URL || '').trim() || undefined) : undefined;
   return {
     dbType,
     host: String(body?.host || '').trim(),
@@ -69,7 +71,9 @@ function normalizeDbConfig(body) {
     database: String(body?.database || '').trim(),
     username: String(body?.username || body?.user || '').trim(),
     password: String(body?.password || ''),
-    uri: String(body?.uri || '').trim()
+    uri: String(body?.uri || '').trim(),
+    useProxy,
+    proxyUrl
   };
 }
 
@@ -354,7 +358,9 @@ function cronMatches(expression, date) {
 
 async function executeJob(env, job) {
   const driver = getDriver(job.dbType);
-  const dbConfig = job.dbConfig;
+  const useProxy = job.dbConfig?.useProxy === true;
+  const proxyUrl = useProxy ? (String(env?.SOCKS5_PROXY_URL || '').trim() || undefined) : undefined;
+  const dbConfig = { ...job.dbConfig, proxyUrl };
   const results = [];
 
   for (const tableName of job.selectedTables) {
@@ -563,7 +569,7 @@ async function handleStripeWebhook(req, env) {
 async function handleDbConnect(req, env) {
   try {
     const body = await req.json();
-    const config = normalizeDbConfig(body);
+    const config = normalizeDbConfig(body, env);
     validateDbConfig(config);
     const driver = getDriver(config.dbType);
     const tables = await driver.listTables(config);
@@ -576,7 +582,7 @@ async function handleDbConnect(req, env) {
 async function handleDbSync(req, env) {
   try {
     const body = await req.json();
-    const config = normalizeDbConfig(body);
+    const config = normalizeDbConfig(body, env);
     validateDbConfig(config);
     const selectedTables = normalizeSelectedTables(body?.selectedTables);
     const rowLimit = normalizeRowLimit(body?.rowLimit);
@@ -652,7 +658,7 @@ async function handleCreateJob(req, env) {
     if (!body.bitableToken) throw new Error('请输入多维表格授权码');
     if (!body.bitableAppToken) throw new Error('请输入多维表格 App Token');
     if (!body.selectedTables?.length) throw new Error('请选择要同步的数据表');
-    const dbConfig = normalizeDbConfig(body);
+    const dbConfig = normalizeDbConfig(body, env);
     validateDbConfig(dbConfig);
 
     const job = {

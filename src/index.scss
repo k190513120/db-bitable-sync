@@ -204,6 +204,55 @@ body {
   }
 }
 
+.proxy-toggle-row {
+  .proxy-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #4f8eff;
+      cursor: pointer;
+    }
+  }
+
+  .proxy-tip {
+    margin-top: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(79, 142, 255, 0.08);
+    border: 1px solid rgba(79, 142, 255, 0.2);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: #a0b4d0;
+
+    i {
+      color: #4f8eff;
+      font-size: 13px;
+    }
+
+    .proxy-ip {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: #4f8eff;
+      font-weight: 600;
+      font-size: 13px;
+      user-select: all;
+    }
+  }
+}
+
 .field-shell {
   min-height: 58px;
   display: flex;

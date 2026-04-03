@@ -3,6 +3,7 @@
  * This package has native Cloudflare Workers support and does NOT use eval().
  */
 import postgres from 'postgres';
+import { connect } from 'cloudflare:sockets';
 
 function serializeValue(value) {
   if (value === null || value === undefined) return null;
@@ -21,7 +22,7 @@ function serializeValue(value) {
 }
 
 function createSql(config) {
-  return postgres({
+  const opts = {
     host: config.host,
     port: config.port || 5432,
     database: config.database,
@@ -32,7 +33,15 @@ function createSql(config) {
     max: 1,
     fetch_types: false,   // skip pg_type query for faster startup
     prepare: false         // disable prepared statements for compatibility
-  });
+  };
+  if (config.proxyUrl) {
+    opts.socket = () => connect({
+      hostname: config.host,
+      port: config.port || 5432,
+      socksProxy: config.proxyUrl
+    });
+  }
+  return postgres(opts);
 }
 
 export async function listTables(config) {

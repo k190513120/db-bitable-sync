@@ -6,6 +6,7 @@ export interface DbConnectionConfig {
   username: string;
   password: string;
   uri?: string;
+  useProxy?: boolean;
 }
 
 export interface DbTableMeta {

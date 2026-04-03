@@ -141,6 +141,7 @@ function bindEvents() {
   $('#dbType').on('change', handleDbTypeChange);
   $('input[name="syncMode"]').on('change', handleSyncModeChange);
   $('#createJob').on('click', handleCreateScheduledJob);
+  $('#useProxy').on('change', handleProxyToggle);
   $('#paywallUpgradeBtn').on('click', handlePaywallUpgrade);
   // Alipay modal
   $('#alipayModalClose').on('click', closeAlipayModal);
@@ -162,6 +163,15 @@ async function handlePaywallUpgrade() {
     }
   } catch (_) {
     showJobResult(t('msg.paymentFailed'), 'error');
+  }
+}
+
+function handleProxyToggle() {
+  const checked = ($('#useProxy') as any).is(':checked');
+  if (checked) {
+    $('#proxyTip').show();
+  } else {
+    $('#proxyTip').hide();
   }
 }
 
@@ -229,6 +239,7 @@ function renderIncrementalConfig() {
 
 function getDbConfig(): DbConnectionConfig {
   const dbType = String($('#dbType').val() || 'mysql');
+  const useProxy = ($('#useProxy') as any).is(':checked') as boolean;
   if (dbType === 'mongodb') {
     return {
       dbType,
@@ -237,7 +248,8 @@ function getDbConfig(): DbConnectionConfig {
       database: String($('#mongoDatabase').val() || '').trim(),
       username: '',
       password: '',
-      uri: String($('#mongoUri').val() || '').trim()
+      uri: String($('#mongoUri').val() || '').trim(),
+      useProxy
     };
   }
   // mysql, postgresql
@@ -252,7 +264,8 @@ function getDbConfig(): DbConnectionConfig {
     port: Number.isFinite(port) ? Math.max(1, Math.min(65535, Math.floor(port))) : 3306,
     database,
     username,
-    password
+    password,
+    useProxy
   };
 }
 
