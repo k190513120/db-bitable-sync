@@ -7,8 +7,8 @@
   <title data-i18n="card.title">数据库同步插件</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="./assets/index.be2ee36c.js"></script>
-  <link rel="stylesheet" href="./assets/index.bed70d2b.css">
+  <script type="module" crossorigin src="./assets/index.26e284ca.js"></script>
+  <link rel="stylesheet" href="./assets/index.8d4d5dda.css">
 </head>
 <body>
   <main class="main">
@@ -44,6 +44,19 @@
               <option value="postgresql">PostgreSQL</option>
               <option value="mongodb">MongoDB</option>
             </select>
+          </div>
+        </div>
+
+        <!-- Private network proxy toggle -->
+        <div class="form-item proxy-toggle-row">
+          <label class="proxy-toggle-label">
+            <input id="useProxy" type="checkbox" />
+            <span data-i18n="label.useProxy">内网数据库（需配置 IP 白名单）</span>
+          </label>
+          <div id="proxyTip" class="proxy-tip" style="display: none;">
+            <i class="fas fa-circle-info"></i>
+            <span data-i18n="tip.proxyIp">请在数据库防火墙中将以下 IP 加入白名单：</span>
+            <code class="proxy-ip">165.154.200.47</code>
           </div>
         </div>
 
