@@ -53,39 +53,42 @@ export async function executeJob(job) {
   const driver = getDriver(freshJob.dbType);
   const dbConfig = freshJob.dbConfig;
   const results = [];
+  const failures = [];
 
   for (const tableName of freshJob.selectedTables) {
-    const incrementalOpts = {};
-    if (freshJob.syncMode === 'incremental' && freshJob.incrementalConfig?.[tableName]) {
-      const pk = freshJob.incrementalConfig[tableName].primaryKey;
-      const state = incrementalState[freshJob.id]?.[tableName];
-      if (pk) {
-        incrementalOpts.primaryKey = pk;
-        if (state?.lastValue != null) {
-          incrementalOpts.lastValue = state.lastValue;
+    try {
+      const incrementalOpts = {};
+      let pk = null;
+      if (freshJob.syncMode === 'incremental' && freshJob.incrementalConfig?.[tableName]) {
+        pk = freshJob.incrementalConfig[tableName].primaryKey || null;
+        if (pk) {
+          incrementalOpts.primaryKey = pk;
+          const state = incrementalState[freshJob.id]?.[tableName];
+          if (state?.lastValue != null) {
+            incrementalOpts.lastValue = state.lastValue;
+          }
         }
       }
-    }
 
-    const tableData = await driver.fetchTableData(
-      dbConfig,
-      tableName,
-      freshJob.rowLimit || 500,
-      incrementalOpts.primaryKey ? incrementalOpts : undefined
-    );
+      const tableData = await driver.fetchTableData(
+        dbConfig,
+        tableName,
+        freshJob.rowLimit || 500,
+        incrementalOpts.primaryKey ? incrementalOpts : undefined
+      );
 
-    const result = await syncTableToBitable(
-      freshJob.bitableToken,
-      freshJob.bitableAppToken,
-      tableData,
-      freshJob.tablePrefix || '',
-      freshJob.syncMode || 'full'
-    );
+      const result = await syncTableToBitable(
+        freshJob.bitableToken,
+        freshJob.bitableAppToken,
+        tableData,
+        freshJob.tablePrefix || '',
+        freshJob.syncMode || 'full',
+        pk
+      );
 
-    // Update incremental state and persist
-    if (freshJob.syncMode === 'incremental' && freshJob.incrementalConfig?.[tableName]) {
-      const pk = freshJob.incrementalConfig[tableName].primaryKey;
-      if (pk && tableData.rows.length > 0) {
+      // 仅在写入成功后才推进 lastValue。失败时进入 catch，state 保持不动，
+      // 下次重试同窗口（飞书侧已 upsert，不会重复）。
+      if (freshJob.syncMode === 'incremental' && pk && tableData.rows.length > 0) {
         const lastRow = tableData.rows[tableData.rows.length - 1];
         if (!incrementalState[freshJob.id]) incrementalState[freshJob.id] = {};
         incrementalState[freshJob.id][tableName] = {
@@ -94,9 +97,22 @@ export async function executeJob(job) {
         };
         saveIncrementalState(incrementalState);
       }
-    }
 
-    results.push(result);
+      results.push(result);
+    } catch (error) {
+      console.error(`[scheduler] 表 ${tableName} 同步失败:`, error?.message);
+      failures.push({ tableName, error: error?.message || String(error) });
+      // 不抛，继续下一张表
+    }
+  }
+
+  if (failures.length) {
+    const summary = failures.map((f) => `${f.tableName}: ${f.error}`).join('; ');
+    const err = new Error(`${failures.length}/${freshJob.selectedTables.length} 张表同步失败: ${summary}`);
+    err.partialResults = results;
+    err.failures = failures;
+    updateJobStatus(freshJob.id, 'failed', err.message);
+    throw err;
   }
 
   // Update lastRun status
