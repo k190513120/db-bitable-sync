@@ -523,7 +523,10 @@ async function handleStartSync() {
           const next = startProgress + (innerProgress / 100) * spanProgress;
           updateProgress(next, message);
         },
-        { syncMode: syncMode as 'full' | 'incremental' }
+        {
+          syncMode: syncMode as 'full' | 'incremental',
+          primaryKey: incrementalConfig[tablePayload.tableName]?.primaryKey
+        }
       );
       summary.push(t('msg.tableResult', { tableName: result.tableName, rowCount: result.rowCount }));
 

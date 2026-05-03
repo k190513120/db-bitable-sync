@@ -362,48 +362,64 @@ async function executeJob(env, job) {
   const proxyUrl = useProxy ? (String(env?.SOCKS5_PROXY_URL || '').trim() || undefined) : undefined;
   const dbConfig = { ...job.dbConfig, proxyUrl };
   const results = [];
+  const failures = [];
 
   for (const tableName of job.selectedTables) {
-    const incrementalOpts = {};
-    if (job.syncMode === 'incremental' && job.incrementalConfig?.[tableName]) {
-      const pk = job.incrementalConfig[tableName].primaryKey;
-      const state = await getIncrementalState(env, job.id, tableName);
-      if (pk) {
-        incrementalOpts.primaryKey = pk;
-        if (state?.lastValue != null) {
-          incrementalOpts.lastValue = state.lastValue;
+    try {
+      const incrementalOpts = {};
+      let pk = null;
+      if (job.syncMode === 'incremental' && job.incrementalConfig?.[tableName]) {
+        pk = job.incrementalConfig[tableName].primaryKey || null;
+        if (pk) {
+          incrementalOpts.primaryKey = pk;
+          const state = await getIncrementalState(env, job.id, tableName);
+          if (state?.lastValue != null) {
+            incrementalOpts.lastValue = state.lastValue;
+          }
         }
       }
-    }
 
-    const tableData = await driver.fetchTableData(
-      dbConfig,
-      tableName,
-      job.rowLimit || 500,
-      incrementalOpts.primaryKey ? incrementalOpts : undefined
-    );
+      const tableData = await driver.fetchTableData(
+        dbConfig,
+        tableName,
+        job.rowLimit || 500,
+        incrementalOpts.primaryKey ? incrementalOpts : undefined
+      );
 
-    const result = await syncTableToBitable(
-      job.bitableToken,
-      job.bitableAppToken,
-      tableData,
-      job.tablePrefix || '',
-      job.syncMode || 'full'
-    );
+      const result = await syncTableToBitable(
+        job.bitableToken,
+        job.bitableAppToken,
+        tableData,
+        job.tablePrefix || '',
+        job.syncMode || 'full',
+        pk
+      );
 
-    // Update incremental state
-    if (job.syncMode === 'incremental' && job.incrementalConfig?.[tableName]) {
-      const pk = job.incrementalConfig[tableName].primaryKey;
-      if (pk && tableData.rows.length > 0) {
+      // 仅在写入成功后才推进 lastValue。失败时上面 await 抛出，
+      // 整个 try 块进入 catch，state 保持不动，下次重试同窗口（飞书侧已 upsert，不会重复）。
+      if (job.syncMode === 'incremental' && pk && tableData.rows.length > 0) {
         const lastRow = tableData.rows[tableData.rows.length - 1];
         await saveIncrementalState(env, job.id, tableName, {
           primaryKey: pk,
           lastValue: lastRow[pk]
         });
       }
-    }
 
-    results.push(result);
+      results.push(result);
+    } catch (error) {
+      console.error(`[executeJob] 表 ${tableName} 同步失败:`, error?.message);
+      failures.push({ tableName, error: error?.message || String(error) });
+      // 不抛，继续下一张表
+    }
+  }
+
+  if (failures.length) {
+    // 报告聚合错误，但 results 里仍包含成功的表
+    const summary = failures.map((f) => `${f.tableName}: ${f.error}`).join('; ');
+    const err = new Error(`${failures.length}/${job.selectedTables.length} 张表同步失败: ${summary}`);
+    err.partialResults = results;
+    err.failures = failures;
+    throw err;
   }
 
   return results;
